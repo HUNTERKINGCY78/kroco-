@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Initialize variables
+valid=0
+invalid=0
+proxies=()
+users=()
+
+# Load proxies from file
+while IFS= read -r line; do
+    proxies+=("$line")
+done < "proxies.txt"
+
+# Load usernames from file
+while IFS= read -r line; do
+    users+=("$line")
+done < "users.txt"
+
+# Get session ID
+read -p "Enter sessionID: " ssid
+
+# Infinite loop
+while true; do
+    clear
+    echo "Valid: $valid | Invalid: $invalid"
+
+    # Select random proxy and username
+    random_proxy=${proxies[RANDOM % ${#proxies[@]}]}
+    random_user=${users[RANDOM % ${#users[@]}]}
+
+    # Make the HTTP request
+    response=$(curl -s -X GET "https://www.tiktok.com/api/uniqueid/check/" \
+        -H "authority: www.tiktok.com" \
+        -H "accept: */*" \
+        -H "accept-language: en-US,en;q=0.9" \
+        -H "user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54" \
+        -b "sessionid=$ssid" \
+        --proxy "$random_proxy" \
+        --data-urlencode "unique_id=$random_user")
+
+    # Check response for availability
+    if echo "$response" | grep -q '"status_code":0'; then
+        echo -e "\033[0;32m$random_user AVAILABLE\033[0m"
+        ((valid++))
+    elif echo "$response" | grep -q '"status_code":3249'; then
+        echo -e "\033[0;31m$random_user TAKEN/BANNED\033[0m"
+        ((invalid++))
+    else
+        echo "Error or unexpected response"
+    fi
+
+    sleep 1 # Delay to avoid overloading server
+done
